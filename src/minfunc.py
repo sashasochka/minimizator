@@ -70,7 +70,7 @@ def minimized(system):
   k = get_number_of_args(system) # the number of arguments in the system
   print('The number of arguments is {}...'.format(k))
 
-  ''' conjunct all functions in system to function phi to receive phi FDNF'''
+  ''' calculate Full DNF'''
   phi_fdnf = [] # dnf of conjunction of the functions in the system
   values = list({value for function in system for value in function })
   for i in values: # iterate over every possible value
@@ -80,11 +80,11 @@ def minimized(system):
         labels.append(j)
     if labels != []:
       phi_fdnf.append((bin(i,k), tuple(labels)))
-  verbose('\n\nPhi DNF:')
+  verbose('\n\nDNF:')
   verbose('\n'.join(map(str, phi_fdnf)))
 
-  ''' calculate SDNF '''
-  phi_sdnf = []
+  ''' calculate Reduced DNF '''
+  phi_rdnf = []
   cur = phi_fdnf
   for i in range(k):
     cur_left = [True] * len(cur)
@@ -106,13 +106,47 @@ def minimized(system):
             cur_left[a] = False
           if common == cur[b][1]:
              cur_left[b] = False
-    phi_sdnf.extend([cur[i] for i in range(len(cur)) if cur_left[i]])
+    phi_rdnf.extend([cur[i] for i in range(len(cur)) if cur_left[i]])
     cur = unique(next)
-  phi_sdnf.extend(cur)
-  verbose('\n\nPhi SDNF:')
-  verbose('\n'.join(map(str, phi_sdnf)))
+  phi_rdnf.extend(cur)
+  verbose('\n\nSDNF:')
+  verbose('\n'.join(map(str, phi_rdnf)))
 
+  ''' calculate Deadlock DNF using coverage table '''
+  columns = []
+  for constituent, labels in phi_fdnf:
+    columns.extend([(constituent, label) for label in labels])
+  rows = phi_rdnf
 
+  # assert covers('XXX', '111')
+  # assert covers('11X', '111')
+  table = [[' '] * len(columns) for i in range(len(rows))]
+  for i, (implicant, labels) in enumerate(rows):
+    for j, (constituent, label) in enumerate(columns):
+      if label in labels and covers(implicant, constituent):
+        table[i][j] = 'Y'
+
+  kernel_indexes = []
+  for col in range(len(table[0])):
+    index = -1
+    for row in range(len(table)):
+      if table[row][col] == 'Y':
+        if index == -1:
+          index = row
+        else:
+          break
+    else:
+      try:
+        assert index != -1
+      except:
+        print('\n'.join(map(str, table)))
+      kernel_indexes.append(index)
+
+  kernel = [rows[index][0] for index in kernel_indexes]
+  verbose('\n\nKernel:')
+  verbose('\n'.join(map(str, kernel)))
+
+  ''' calculate minimal DNF '''
 
 def get_number_of_args(system):
   ''' returns the maximal number of arguments from function of the system'''
@@ -164,6 +198,10 @@ def combine(a, b):
   ''' aggregates a and b string into 1 string with different letters changed to X '''
   assert(len(a) == len(b))
   return ''.join([v1 if v1 == v2 else 'X' for v1, v2 in zip(a, b)])
+
+def covers(implicant, constituent):
+  assert len(constituent) == len(implicant)
+  return all(b in [a, 'X'] for a, b in zip(constituent, implicant))
 
 def verbose(msg):
   global verbose_messages
