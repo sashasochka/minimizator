@@ -5,13 +5,15 @@ import itertools
 import operator
 
 verbose_messages = False
+raw_result       = False
 helpmsg = (
 '''Usage: minfunc [options] [file]
  If file not specified read from stdin
 
  Command line options:
   -h [--help] for this help;
-  -v [--verbose] to see additional minimization information
+  -v [--verbose] to see additional minimization information. 
+  -r [--raw] to receive raw results for parsing. Not conformant with --verbose
   -n [--nohelp] to disable help at startup
 ''')
 
@@ -24,7 +26,7 @@ Press enter to finish''')
 
 def main():
   ''' Parses command line and interacts with user '''
-  global verbose_messages
+  global verbose_messages, raw_result
   nogreetings = False
   fin = sys.stdin
   for arg in sys.argv[1:]:
@@ -35,6 +37,8 @@ def main():
       nogreetings = True;
     elif arg in ['-v', '--verbose']:
       verbose_messages = True
+    elif arg in ['-r', '--raw']:
+      raw_result = True
     elif arg[0] == '-':
       sys.stderr.write('Option "{}" not recognized\n'.format(arg))
     else:
@@ -61,6 +65,13 @@ def main():
     function_number += 1
 
   result = minimized(system)
+  if not raw_result:
+    print('Resulting minimal DNF system: ')
+    for i, function in enumerate(result):
+      print('Function {}: {}'.format(i, ' v '.join(function)))
+  else:
+    for function in result:
+      print(' '.join(function))
 
 
 def minimized(system):
@@ -68,7 +79,7 @@ def minimized(system):
 
   n = len(system) # the number of functions in the system
   k = get_number_of_args(system) # the number of arguments in the system
-  print('The number of arguments is {}...'.format(k))
+  verbose('\nThe number of arguments is {}...'.format(k))
 
   ''' calculate Full DNF'''
   phi_fdnf = [] # dnf of conjunction of the functions in the system
@@ -80,7 +91,7 @@ def minimized(system):
         labels.append(j)
     if labels != []:
       phi_fdnf.append((bin(i,k), tuple(labels)))
-  verbose('\n\nDNF:')
+  verbose('\n\nFull DNF:')
   verbose('\n'.join(map(str, phi_fdnf)))
 
   ''' calculate Reduced DNF '''
@@ -109,7 +120,7 @@ def minimized(system):
     phi_rdnf.extend([cur[i] for i in range(len(cur)) if cur_left[i]])
     cur = unique(next)
   phi_rdnf.extend(cur)
-  verbose('\n\nSDNF:')
+  verbose('\n\nReduced DNF:')
   verbose('\n'.join(map(str, phi_rdnf)))
 
   ''' calculate Deadlock DNF using coverage table '''
@@ -141,12 +152,54 @@ def minimized(system):
       except:
         print('\n'.join(map(str, table)))
       kernel_indexes.append(index)
-
+  kernel_indexes = list(set(kernel_indexes))
   kernel = [rows[index][0] for index in kernel_indexes]
   verbose('\n\nKernel:')
   verbose('\n'.join(map(str, kernel)))
 
+  nonkernel = []
+  l = 0
+  for val in kernel_indexes:
+    nonkernel.extend(range(l, val))
+    l = val + 1
+  nonkernel.extend(range(l, len(rows)))
+
   ''' calculate minimal DNF '''
+  phi_mdnf = phi_rdnf
+  indexes = range(len(phi_rdnf))
+  for mask in range(1 << len(nonkernel)):
+    additional_indexes = [nonkernel[i] 
+          for i, val in enumerate(bin(mask, len(nonkernel))) if val == '1']
+    all_indexes = kernel_indexes + additional_indexes
+    implicants = kernel + [rows[i] for i in additional_indexes]
+    if complexity(implicants) > complexity(phi_mdnf):
+      continue
+   
+    ok = False
+    for col in range(len(columns)):
+      for row in range(len(rows)):
+        if table[row][col] == 'Y':
+          break
+      else:
+        break
+      continue
+    else:
+      phi_mdnf = implicants
+      indexes = all_indexes
+
+
+  verbose('\n\nMinimal DNF of phi:')
+  verbose('\n'.join(map(str, phi_mdnf)))
+  verbose()
+
+  result = [[] for i in range(n)]
+  for index in indexes:
+    val, labels = rows[index]
+    for label in labels:
+      result[label].append(val)
+
+  return result
+
 
 def get_number_of_args(system):
   ''' returns the maximal number of arguments from function of the system'''
@@ -158,7 +211,7 @@ def get_number_of_args(system):
   return k
   
 def bin(val, k):
-  ''' converts val to binary with leading zeros such that it length = k '''
+  ''' converts val to binary with leading zeros such that it's length is equal to k '''
   res = ['0'] * k
   i = k - 1
   while val != 0:
@@ -203,10 +256,13 @@ def covers(implicant, constituent):
   assert len(constituent) == len(implicant)
   return all(b in [a, 'X'] for a, b in zip(constituent, implicant))
 
-def verbose(msg):
+def verbose(msg = ''):
   global verbose_messages
   if verbose_messages:
     print(msg)
+
+def complexity(dnf):
+  return -1 + sum([len(clause) - clause.count('X') for clause in dnf])
 
 if __name__ == '__main__':
   main()
