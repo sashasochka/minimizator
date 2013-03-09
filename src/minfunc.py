@@ -76,6 +76,8 @@ def main():
 
 def minimized(system):
   ''' Minimizes the system. Accepts two-dimensional integer list '''
+  for function in system:
+    assert sorted(function)
 
   n = len(system) # the number of functions in the system
   k = get_number_of_args(system) # the number of arguments in the system
@@ -203,22 +205,12 @@ def minimized(system):
 
 def get_number_of_args(system):
   ''' returns the maximal number of arguments from function of the system'''
-  k = 0
-  for func in system:
-    for val in func:
-      if val != 0:
-        k = max(k, int(math.log(val, 2.)) + 1)
+  k = max([0] + [func[-1].bit_length() for func in system])
   return k
   
 def bin(val, k):
   ''' converts val to binary with leading zeros such that it's length is equal to k '''
-  res = ['0'] * k
-  i = k - 1
-  while val != 0:
-    res[i] = str(val%2)
-    val //= 2 
-    i -= 1
-  return ''.join(res)
+  return '{:0{}b}'.format(val, k)
 
 def binary_search(a, val, lo = 0, hi = None):
   ''' Performs binary search on sorted array and returns index if found or -1 else '''
@@ -241,11 +233,7 @@ def unique(sequence):
 def bit_diff(a, b):
   ''' returns the number of different bits on same positions in a and b '''
   assert(len(a) == len(b))
-  result = 0
-  for i in range(len(a)):
-    if a[i] != b[i]:
-      result += 1
-  return result
+  return sum(int(v1 != v2) for v1, v2 in zip(a, b))
 
 def combine(a, b):
   ''' aggregates a and b string into 1 string with different letters changed to X '''
