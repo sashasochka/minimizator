@@ -1,0 +1,38 @@
+
+The number of arguments is 3...
+
+
+Full DNF:
+('000', (0, 1))
+('010', (1,))
+('011', (1,))
+('101', (0, 1))
+('110', (0,))
+('111', (0,))
+
+
+Reduced DNF:
+('000', (0, 1))
+('101', (0, 1))
+('11X', (0,))
+('01X', (1,))
+('0X0', (1,))
+('1X1', (0,))
+
+
+Kernel:
+000
+101
+11X
+01X
+
+
+Minimal DNF of phi:
+000
+101
+11X
+01X
+
+Resulting minimal DNF system: 
+Function 0: 000 v 101 v 11X
+Function 1: 000 v 101 v 01X
