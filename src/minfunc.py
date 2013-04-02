@@ -1,8 +1,5 @@
 #!/usr/bin/python3
 import sys
-import math
-import itertools
-import operator
 
 verbose_messages = False
 raw_result = False
@@ -72,7 +69,7 @@ def main():
             undefVals = []
 
         posVals = [int(i) for i in posValsStr.split()]
-        system.append((sorted(posVals + undefVals), sorted(posVals)))
+        system.append((list(set(posVals + undefVals)), posVals))
         function_number += 1
 
     result = minimized(system)
@@ -180,15 +177,21 @@ def minimized(system):
                 else:
                     break
         else:
-            try:
-                assert index != -1
-            except:
-                print('\n'.join(map(str, table)))
+            assert index != -1
             kernel_indexes.append(index)
-    kernel_indexes = list(set(kernel_indexes))
+    kernel_indexes = sorted(kernel_indexes)
     kernel = [rows[index] for index in kernel_indexes]
     verbose('\n\nKernel:')
     verbose('\n'.join(map(str, kernel)))
+
+
+    non_kernel_cols = set(range(len(columns)))
+    for i in kernel_indexes:
+        for c in range(len(columns)):
+            if table[i][c] == 'Y':
+                if c in non_kernel_cols:
+                    non_kernel_cols.remove(c)
+    non_kernel_cols = list(non_kernel_cols)
 
     nonkernel = []
     l = 0
@@ -200,26 +203,26 @@ def minimized(system):
 
     ''' calculate minimal DNF '''
     phi_mdnf = phi_rdnf
-    indexes = range(len(phi_rdnf))
-    for mask in range(1 << len(nonkernel)):
+    # indexes = range(len(phi_rdnf))
+    for mask in range((1 << len(nonkernel)) - 1, -1, -1):
         additional_indexes = [nonkernel[i]
                               for i, val in enumerate(bin(mask, len(nonkernel))) if val == '1']
-        all_indexes = kernel_indexes + additional_indexes
+        all_indexes = set(kernel_indexes) | set(additional_indexes)
         implicants = kernel + [rows[i] for i in additional_indexes]
         if complexity(implicants) >= complexity(phi_mdnf):
             continue
 
-        for col in range(len(columns)):
+        for col in non_kernel_cols:
             local_ok = False
-            for row in range(len(rows)):
-                if table[row][col] == 'Y' and row in all_indexes:
+            for row in all_indexes:
+                if table[row][col] == 'Y':
                     local_ok = True
                     break
             if not local_ok:
                 break
         else:
             phi_mdnf = implicants
-            indexes = all_indexes
+            # indexes = all_indexes
 
     verbose('\n\nMinimal DNF of phi:')
     verbose('\n'.join(map(str, phi_mdnf)))
@@ -289,28 +292,10 @@ def verbose(msg=''):
         print(msg)
 
 def complexity(implicants):
-
-    n = max([max(labels) for _, labels in implicants ]) + 1
-    # print(implicants)
-    result = [set() for i in range(n)]
-    for val, labels in implicants:
-        for label in labels:
-            result[label].add(val)
-
-    for res in result:
-        rmls = []
-        for val1 in res:
-            for val2 in res:
-                if val1 != val2 and covers(val1, val2):
-                    rmls.append(val2)
-        for v in rmls:
-            if v in res:
-                res.remove(v)
-    compl = 0
-    for res in result:
-        for val in res:
-            compl += len(val) - val.count('X')
-    return compl - n
+    result = 0
+    for impl in implicants:
+        result += len(impl[0]) - impl[0].count('X')
+    return result - len(implicants)
 
 if __name__ == '__main__':
     main()
