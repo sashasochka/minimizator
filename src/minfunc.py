@@ -4,15 +4,15 @@ import sys
 verbose_messages = False
 raw_result = False
 helpmsg = (
-    '''Usage: minfunc [options] [file]
-     If file not specified read from stdin
+'''Usage: minfunc [options] [file]
+ If file not specified read from stdin
 
-     Command line options:
-      -h [--help] for this help;
-      -v [--verbose] to see additional minimization information.
-      -r [--raw] to receive raw results for parsing. Not conformant with --verbose
-      -n [--nohelp] to disable help at startup
-    ''')
+ Command line options:
+  -h [--help] for this help;
+  -v [--verbose] to see additional minimization information.
+  -r [--raw] to receive raw results for parsing. Not conformant with --verbose
+  -n [--nohelp] to disable help at startup
+''')
 
 greetings = (
     '''This is Function Minimizator from Sochka Oleksandr!
