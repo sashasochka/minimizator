@@ -69,7 +69,7 @@ def main():
             undefVals = []
 
         posVals = [int(i) for i in posValsStr.split()]
-        system.append((list(set(posVals + undefVals)), posVals))
+        system.append((sorted(set(posVals + undefVals)), sorted(posVals)))
         function_number += 1
 
     result = minimized(system)
